@@ -92,6 +92,24 @@ DISPLAY_COLS = ["Hitter", "Team", "Hand", "Opp Pitcher", "Opp Hand", "Advantage"
                 "Opp HR/9", "HR%", "Hit%", "TB1.5%", "SO Prob", "Barrel%", "xHR/PA", "K%", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex"]
  
  
+def hr9_band(v):
+    """Fixed-threshold coloring for pitcher HR/9 (absolute, not slate-relative).
+    <0.8 excellent · 0.8-1.1 solid · 1.1-1.3 average · 1.3-1.5 below avg · >1.5 homer-prone."""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return ""
+    if x < 0.8:
+        return "background-color:#1a9850;color:white"   # excellent (elite arm)
+    if x < 1.1:
+        return "background-color:#a6d96a"               # above average to solid
+    if x < 1.3:
+        return "background-color:#fee08b"               # average
+    if x < 1.5:
+        return "background-color:#fdae61"               # below average
+    return "background-color:#d73027;color:white"       # bad / home-run prone
+ 
+ 
 def style_hitters(data: pd.DataFrame):
     cols = [c for c in DISPLAY_COLS if c in data.columns]
     view = data[cols]
@@ -103,11 +121,13 @@ def style_hitters(data: pd.DataFrame):
     grad_up = [c for c in ("HR%", "Hit%", "TB1.5%", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex") if c in view.columns]
     if grad_up:
         styler = styler.background_gradient(cmap="RdYlGn", subset=grad_up)
-    # Reverse scale (low = green): strikeouts hurt the hitter, and a low Opp HR/9 = an elite,
-    # stingy arm (green) grading to a homer-prone one (red).
-    red_high = [c for c in ("SO Prob", "K%", "Opp HR/9") if c in view.columns]
+    # Strikeouts hurt the hitter, so high = red on both the game prob and the season rate.
+    red_high = [c for c in ("SO Prob", "K%") if c in view.columns]
     if red_high:
         styler = styler.background_gradient(cmap="RdYlGn_r", subset=red_high)
+    # Opp HR/9 uses fixed bands (elite arm green -> homer-prone red), not a slate-relative gradient.
+    if "Opp HR/9" in view.columns:
+        styler = styler.apply(lambda s: [hr9_band(v) for v in s], subset=["Opp HR/9"])
     return styler
  
  
@@ -202,3 +222,7 @@ st.caption("HR% / Hit% / TB1.5% / SO Prob are matchup-aware model probabilities 
            "each hitter's stabilized rates are combined with the opposing pitcher's allowed rates "
            "(odds-ratio method) and his platoon split, then park-adjusted. K% is the hitter's SEASON "
            "strikeout rate (a skill stat) for reference. PowerIndex is the legacy heuristic.")
+st.caption("Opp HR/9 = the opposing starter's home runs allowed per 9 innings, colored on fixed bands "
+           "(not slate-relative): 🟢 under 0.80 excellent · 🟩 0.80–1.10 solid · 🟡 1.10–1.30 average · "
+           "🟠 1.30–1.50 below average · 🔴 over 1.50 homer-prone. A redder arm is a better power spot "
+           "for the hitter.")
