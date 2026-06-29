@@ -88,8 +88,8 @@ else:
  
  
 # --- Styling ----------------------------------------------------------------
-DISPLAY_COLS = ["Hitter", "Team", "Hand", "Opp Pitcher", "Opp Hand", "Opp HR/9", "Advantage", "Lineup",
-                "HR%", "Hit%", "TB1.5%", "SO Prob", "Barrel%", "xHR/PA", "K%", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex"]
+DISPLAY_COLS = ["Hitter", "Team", "Hand", "Opp Pitcher", "Opp Hand", "Advantage", "Lineup",
+                "Opp HR/9", "HR%", "Hit%", "TB1.5%", "SO Prob", "Barrel%", "xHR/PA", "K%", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex"]
  
  
 def style_hitters(data: pd.DataFrame):
@@ -97,16 +97,17 @@ def style_hitters(data: pd.DataFrame):
     view = data[cols]
     pct = [c for c in ("HR%", "Hit%", "TB1.5%", "SO Prob", "K%", "Barrel%", "xHR/PA") if c in view.columns]
     fmt = {"HR": "{:.0f}", "TB": "{:.0f}", "SLG": "{:.3f}", "OPS": "{:.3f}",
-           "ISO": "{:.3f}", "PowerIndex": "{:.1f}"}
+           "ISO": "{:.3f}", "PowerIndex": "{:.1f}", "Opp HR/9": "{:.2f}"}
     fmt.update({c: "{:.1%}" for c in pct})
     styler = view.style.format(fmt)
-    grad_up = [c for c in ("HR%", "Hit%", "TB1.5%", "Opp HR/9", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex") if c in view.columns]
+    grad_up = [c for c in ("HR%", "Hit%", "TB1.5%", "HR", "TB", "SLG", "OPS", "ISO", "PowerIndex") if c in view.columns]
     if grad_up:
         styler = styler.background_gradient(cmap="RdYlGn", subset=grad_up)
-    # Strikeouts are bad for a hitter, so high = red on both the game prob and the season rate.
-    k_cols = [c for c in ("SO Prob", "K%") if c in view.columns]
-    if k_cols:
-        styler = styler.background_gradient(cmap="RdYlGn_r", subset=k_cols)
+    # Reverse scale (low = green): strikeouts hurt the hitter, and a low Opp HR/9 = an elite,
+    # stingy arm (green) grading to a homer-prone one (red).
+    red_high = [c for c in ("SO Prob", "K%", "Opp HR/9") if c in view.columns]
+    if red_high:
+        styler = styler.background_gradient(cmap="RdYlGn_r", subset=red_high)
     return styler
  
  
